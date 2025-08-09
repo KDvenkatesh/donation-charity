@@ -3,104 +3,173 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Donation Page</title>
+  <title>Donation Payment</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
       max-width: 400px;
-      margin: auto;
+      margin: 40px auto;
+      padding: 0 15px;
+      background: #f0f2f5;
+      color: #333;
     }
-    label, select, input {
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    label {
       display: block;
-      margin: 10px 0;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    select, input[type="number"], input[type="text"], button {
       width: 100%;
-      padding: 8px;
-      font-size: 16px;
+      padding: 10px;
+      margin-bottom: 20px;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
     }
     button {
-      padding: 12px;
-      background-color: #3399cc;
+      background-color: #007bff;
       color: white;
-      font-size: 16px;
       border: none;
+      font-weight: bold;
       cursor: pointer;
-      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .success-message {
+      color: green;
+      font-weight: bold;
+      margin-top: 20px;
+      text-align: center;
+    }
+    .error-message {
+      color: red;
+      font-weight: bold;
+      margin-top: 20px;
+      text-align: center;
     }
   </style>
 </head>
 <body>
 
-  <h2>Donate Now</h2>
-  <p><strong>Donor Name:</strong> <span id="donorName"></span></p>
-  <p><strong>Donation Type:</strong> <span id="donationType"></span></p>
+  <h2>Make a Donation</h2>
 
-  <label for="amount">Select Amount (INR):</label>
-  <select id="amount">
-    <option value="100">₹100</option>
-    <option value="500" selected>₹500</option>
-    <option value="1000">₹1000</option>
-    <option value="2000">₹2000</option>
-  </select>
+  <form id="donationForm">
+    <label for="donationType">Donation Type</label>
+    <select id="donationType" required>
+      <option value="" disabled selected>Select Donation Type</option>
+      <option value="Money">Money</option>
+      <option value="Blood">Blood</option>
+      <option value="Books">Books</option>
+    </select>
 
-  <button id="payBtn">Pay with Razorpay</button>
+    <div id="dynamicFields"></div>
 
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <!-- Payment method container, hidden initially -->
+    <div id="paymentMethodContainer" style="display:none;">
+      <label for="paymentMethod">Payment Method</label>
+      <select id="paymentMethod">
+        <option value="" disabled selected>Select Payment Method</option>
+        <option value="upi">UPI</option>
+        <option value="card">Card</option>
+        <option value="netbanking">Net Banking</option>
+      </select>
+    </div>
+
+    <button type="submit">Donate Now</button>
+  </form>
+
+  <div id="message"></div>
+
   <script>
-    // Load donor info from localStorage
-    const donor = JSON.parse(localStorage.getItem('donor')) || { name: 'Guest' };
-    const donationType = localStorage.getItem('donationType') || 'General';
+    const donationTypeSelect = document.getElementById('donationType');
+    const dynamicFieldsDiv = document.getElementById('dynamicFields');
+    const paymentMethodContainer = document.getElementById('paymentMethodContainer');
+    const messageDiv = document.getElementById('message');
 
-    document.getElementById('donorName').textContent = donor.name;
-    document.getElementById('donationType').textContent = donationType;
-
-    document.getElementById('payBtn').onclick = function(e) {
-      e.preventDefault();
-
-      const amountInINR = document.getElementById('amount').value;
-      const amountInPaise = amountInINR * 100;
-
-      // Call backend to create order (you need to build this API)
-      fetch('/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amountInPaise, donorName: donor.name, donationType })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (!data.orderId) {
-          alert('Error creating order. Try again.');
-          return;
-        }
-
-        var options = {
-          "key": "YOUR_RAZORPAY_KEY", // Replace with your Razorpay key
-          "amount": amountInPaise,
-          "currency": "INR",
-          "name": "Your Charity",
-          "description": `Donation - ${donationType}`,
-          "order_id": data.orderId,
-          "handler": function (response){
-            alert("Payment successful. Payment ID: " + response.razorpay_payment_id);
-            // You can send this response to your backend to verify payment and save transaction
-          },
-          "prefill": {
-            "name": donor.name,
-            "email": donor.email || "",
-            "contact": donor.phone || ""
-          },
-          "theme": {
-            "color": "#3399cc"
-          }
-        };
-        var rzp1 = new Razorpay(options);
-        rzp1.open();
-      })
-      .catch(err => {
-        alert('Failed to create order. Check console.');
-        console.error(err);
-      });
+    function clearDynamicFields() {
+      dynamicFieldsDiv.innerHTML = '';
     }
+
+    function createInput(id, label, type='text', placeholder='') {
+      const wrapper = document.createElement('div');
+
+      const labelEl = document.createElement('label');
+      labelEl.setAttribute('for', id);
+      labelEl.textContent = label;
+
+      let inputEl;
+      if(type === 'select') {
+        inputEl = document.createElement('select');
+        inputEl.id = id;
+        inputEl.name = id;
+      } else {
+        inputEl = document.createElement('input');
+        inputEl.type = type;
+        inputEl.id = id;
+        inputEl.name = id;
+        inputEl.placeholder = placeholder;
+      }
+
+      wrapper.appendChild(labelEl);
+      wrapper.appendChild(inputEl);
+      dynamicFieldsDiv.appendChild(wrapper);
+
+      return inputEl;
+    }
+
+    donationTypeSelect.addEventListener('change', () => {
+      clearDynamicFields();
+      const type = donationTypeSelect.value;
+
+      if(type === 'Money') {
+        // Show amount input
+        const amountInput = createInput('amount', 'Amount (₹)', 'number', 'Enter amount in INR');
+        amountInput.min = 1;
+        amountInput.required = true;
+
+        // Show payment method selector
+        paymentMethodContainer.style.display = 'block';
+        document.getElementById('paymentMethod').required = true;
+      } else if(type === 'Blood') {
+        paymentMethodContainer.style.display = 'none';
+        document.getElementById('paymentMethod').required = false;
+
+        const bloodGroupSelect = createInput('bloodGroup', 'Blood Group', 'select');
+        ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].forEach(bg => {
+          const option = document.createElement('option');
+          option.value = bg;
+          option.textContent = bg;
+          bloodGroupSelect.appendChild(option);
+        });
+        bloodGroupSelect.required = true;
+
+        const ageInput = createInput('age', 'Age', 'number', 'Enter your age');
+        ageInput.min = 18;
+        ageInput.required = true;
+
+        const quantityInput = createInput('quantity', 'Quantity (in units)', 'number', 'How many units to donate');
+        quantityInput.min = 1;
+        quantityInput.required = true;
+      } else if(type === 'Books') {
+        paymentMethodContainer.style.display = 'none';
+        document.getElementById('paymentMethod').required = false;
+
+        const bookCountInput = createInput('bookCount', 'Number of Books', 'number', 'Enter number of books');
+        bookCountInput.min = 1;
+        bookCountInput.required = true;
+
+        const bookTypeInput = createInput('bookType', 'Book Type', 'text', 'E.g., Textbook, Novel, etc.');
+        bookTypeInput.required = true;
+      }
+    });
+
   </script>
+
 </body>
 </html>
