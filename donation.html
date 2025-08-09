@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Donation Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+    }
+    label, select, input {
+      display: block;
+      margin: 10px 0;
+      width: 100%;
+      padding: 8px;
+      font-size: 16px;
+    }
+    button {
+      padding: 12px;
+      background-color: #3399cc;
+      color: white;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Donate Now</h2>
+  <p><strong>Donor Name:</strong> <span id="donorName"></span></p>
+  <p><strong>Donation Type:</strong> <span id="donationType"></span></p>
+
+  <label for="amount">Select Amount (INR):</label>
+  <select id="amount">
+    <option value="100">₹100</option>
+    <option value="500" selected>₹500</option>
+    <option value="1000">₹1000</option>
+    <option value="2000">₹2000</option>
+  </select>
+
+  <button id="payBtn">Pay with Razorpay</button>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    // Load donor info from localStorage
+    const donor = JSON.parse(localStorage.getItem('donor')) || { name: 'Guest' };
+    const donationType = localStorage.getItem('donationType') || 'General';
+
+    document.getElementById('donorName').textContent = donor.name;
+    document.getElementById('donationType').textContent = donationType;
+
+    document.getElementById('payBtn').onclick = function(e) {
+      e.preventDefault();
+
+      const amountInINR = document.getElementById('amount').value;
+      const amountInPaise = amountInINR * 100;
+
+      // Call backend to create order (you need to build this API)
+      fetch('/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amountInPaise, donorName: donor.name, donationType })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.orderId) {
+          alert('Error creating order. Try again.');
+          return;
+        }
+
+        var options = {
+          "key": "YOUR_RAZORPAY_KEY", // Replace with your Razorpay key
+          "amount": amountInPaise,
+          "currency": "INR",
+          "name": "Your Charity",
+          "description": `Donation - ${donationType}`,
+          "order_id": data.orderId,
+          "handler": function (response){
+            alert("Payment successful. Payment ID: " + response.razorpay_payment_id);
+            // You can send this response to your backend to verify payment and save transaction
+          },
+          "prefill": {
+            "name": donor.name,
+            "email": donor.email || "",
+            "contact": donor.phone || ""
+          },
+          "theme": {
+            "color": "#3399cc"
+          }
+        };
+        var rzp1 = new Razorpay(options);
+        rzp1.open();
+      })
+      .catch(err => {
+        alert('Failed to create order. Check console.');
+        console.error(err);
+      });
+    }
+  </script>
+</body>
+</html>

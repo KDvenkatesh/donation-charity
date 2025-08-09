@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Donor Registration</title>
+  <link rel="stylesheet" href="styling.css">
+</head>
+<body>
+
+  <video autoplay muted loop id="bgVideo">
+    <source src="bgv.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+
+  <section id="registrationSection" class="form-wrapper" style="display:none;">
+    <form id="donorForm" class="form-container">
+      <h3>Login / Register Here</h3>
+      <input type="text" id="name" placeholder="Enter your name" required>
+      <input type="email" id="email" placeholder="Enter your email" required>
+      <input type="number" id="phone" placeholder="Enter your Mobile-No" required>
+      <button type="submit">Submit</button>
+    </form>
+  </section>
+
+  <section id="profileSection" class="form-wrapper" style="display:none;">
+    <div class="form-container">
+      <h3>Donor Profile</h3>
+      <p><strong>Name:</strong> <span id="profileName"></span></p>
+      <p><strong>Email:</strong> <span id="profileEmail"></span></p>
+      <p><strong>Phone:</strong> <span id="profilePhone"></span></p>
+      
+      <h3>Choose Donation Type</h3>
+      <button onclick="window.location.href='donation.html'">Donate Money</button><br><br>
+      <button onclick="window.location.href='blood.html'">Donate Blood</button><br><br>
+      <button onclick="window.location.href='books.html'">Donate Books</button><br><br>
+      
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </div>
+  </section>
+
+  <script>
+    const regSection = document.getElementById('registrationSection');
+    const profileSection = document.getElementById('profileSection');
+
+    const donorData = JSON.parse(localStorage.getItem('donor'));
+
+    if (donorData) {
+      showProfile(donorData);
+    } else {
+      regSection.style.display = 'flex';
+    }
+
+    document.getElementById('donorForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const donor = {
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim()
+      };
+
+      localStorage.setItem('donor', JSON.stringify(donor));
+      showProfile(donor);
+    });
+
+    function showProfile(donor) {
+      document.getElementById('profileName').textContent = donor.name;
+      document.getElementById('profileEmail').textContent = donor.email;
+      document.getElementById('profilePhone').textContent = donor.phone;
+
+      regSection.style.display = 'none';
+      profileSection.style.display = 'flex';
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+      localStorage.removeItem('donor');
+      location.reload();
+    });
+  </script>
+
+</body>
+</html>
